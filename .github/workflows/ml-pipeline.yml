@@ -19,7 +19,8 @@ jobs:
       run: |
         pwd
         ls -la
-        find . -name requirements.txt
+        echo "Current directory contents:"
+        ls -R
     
     - name: Install dependencies
       run: |
@@ -28,15 +29,12 @@ jobs:
     
     - name: Create models directory
       run: |
-        cd ERA_V3/Assignment5
         mkdir -p models
     
     - name: Train model
       run: |
-        cd ERA_V3/Assignment5
         python train_model.py
     
     - name: Test model
       run: |
-        cd ERA_V3/Assignment5
         python test_model.py
