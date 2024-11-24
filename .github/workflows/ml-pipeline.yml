@@ -17,18 +17,27 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install -r requirements.txt
+        # Install CPU-only PyTorch
+        pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu
+        # Install other dependencies
+        pip install tqdm pytest gitpython pillow numpy
         pip list  # Debug: Show installed packages
     
     - name: Create models directory
       run: mkdir -p models
         
     - name: Train model
+      env:
+        CUDA_VISIBLE_DEVICES: ""  # Disable CUDA
+        TORCH_DEVICE: "cpu"       # Force CPU usage
       run: |
         python -V  # Debug: Show Python version
         python train_model.py
       
     - name: Run tests
+      env:
+        CUDA_VISIBLE_DEVICES: ""  # Disable CUDA
+        TORCH_DEVICE: "cpu"       # Force CPU usage
       run: |
         ls models/  # Debug: List model files
         python test_model.py
@@ -49,4 +58,4 @@ jobs:
         pwd
         ls -la
         ls -la models/ || echo "models/ directory not found"
-        python -c "import torch; print(f'PyTorch version: {torch.__version__}')"
+        python -c "import torch; print(f'PyTorch version: {torch.__version__}'); print(f'CUDA available: {torch.cuda.is_available()}')"
