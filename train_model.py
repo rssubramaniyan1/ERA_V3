@@ -10,7 +10,7 @@ import torch.nn.functional as F
 import torch
 import torch.optim as optim
 
-import tqdm
+from tqdm.auto import tqdm
 from datetime import datetime
 import os
 
@@ -75,7 +75,6 @@ class Net(nn.Module):
         x = self.pool2(x)
         x = self.conv3(x)
         x = self.fc_conv(x)
-        # x = F.adaptive_avg_pool2d(x, 1)
         x = x.view(x.size(0), -1)
         return F.log_softmax(x, dim=-1)
 
@@ -107,8 +106,7 @@ def train():
     
     # Training loop
     model.train()
-    pbar = tqdm(train_loader, desc="Training")
-    for batch_idx, (data, target) in enumerate(pbar):
+    for batch_idx, (data, target) in enumerate(tqdm(train_loader, desc="Training")):
         data, target = data.to(device), target.to(device)
         optimizer.zero_grad()
         output = model(data)
@@ -116,8 +114,8 @@ def train():
         loss.backward()
         optimizer.step()
         
-        # Update progress bar
-        pbar.set_postfix(loss=f"{loss.item():.4f}")
+        if batch_idx % 100 == 0:
+            print(f'Batch {batch_idx}/{len(train_loader)}, Loss: {loss.item():.4f}')
     
     # Save model with timestamp and git info
     timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
