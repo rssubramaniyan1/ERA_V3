@@ -59,6 +59,8 @@ def test_model():
     model.eval()
     correct = 0
     total = 0
+    class_correct = {i: 0 for i in range(10)}
+    class_total = {i: 0 for i in range(10)}
     
     with torch.no_grad():
         pbar = tqdm(test_loader, desc="Testing")
@@ -66,15 +68,30 @@ def test_model():
             data, target = data.to(device), target.to(device)
             output = model(data)
             pred = output.argmax(dim=1)
+            
+            # Overall accuracy
             correct += pred.eq(target).sum().item()
             total += target.size(0)
+            
+            # Class-wise accuracy
+            for t, p in zip(target, pred):
+                class_correct[t.item()] += (p == t).item()
+                class_total[t.item()] += 1
             
             # Update progress bar
             accuracy = 100. * correct / total
             pbar.set_postfix(accuracy=f"{accuracy:.2f}%")
     
+    # Print final results
     final_accuracy = 100. * correct / total
-    print(f"\nTest accuracy: {final_accuracy:.2f}%")
+    print(f"\nOverall Test accuracy: {final_accuracy:.2f}%")
+    
+    # Print class-wise accuracy
+    print("\nClass-wise accuracy:")
+    for i in range(10):
+        class_acc = 100. * class_correct[i] / class_total[i]
+        print(f"Class {i}: {class_acc:.2f}% ({class_correct[i]}/{class_total[i]})")
+    
     assert final_accuracy > 95, f"Model accuracy is {final_accuracy:.2f}%, should be > 95%"
 
 if __name__ == "__main__":
