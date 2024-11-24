@@ -28,15 +28,15 @@ jobs:
     
     - name: Create models directory
       run: |
-        cd Assignment5
+        cd ERA_V3/Assignment5
         mkdir -p models
     
     - name: Train model
       run: |
-        cd Assignment5
+        cd ERA_V3/Assignment5
         python train_model.py
     
     - name: Test model
       run: |
-        cd Assignment5
+        cd ERA_V3/Assignment5
         python test_model.py
