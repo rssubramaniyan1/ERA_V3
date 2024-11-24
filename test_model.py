@@ -1,122 +1,93 @@
 import torch
-import torch.nn as nn
 from torchvision import datasets, transforms
-from tqdm import tqdm
-import glob
-import os
 from model import Net
+import sys
+import os
+import glob
 
-def check_data_exists():
-    data_path = 'data/MNIST/raw'
-    required_files = [
-        'train-images-idx3-ubyte',
-        'train-labels-idx1-ubyte',
-        't10k-images-idx3-ubyte',
-        't10k-labels-idx1-ubyte'
-    ]
-    
-    if not os.path.exists(data_path):
-        print("Data directory does not exist. Will download data.")
-        return False
-    
-    for file in required_files:
-        if not os.path.exists(os.path.join(data_path, file)):
-            print(f"Missing {file}. Will download data.")
-            return False
-    
-    print("MNIST data already exists. Skipping download.")
-    return True
+def get_latest_model():
+    """Get the latest model from the models directory"""
+    models = glob.glob('models/*.pth')
+    if not models:
+        raise FileNotFoundError("No model files found in models directory")
+    return max(models, key=os.path.getctime)
 
-def test_model():
-    # Set reproducibility
-    torch.manual_seed(42)
-    torch.backends.cudnn.deterministic = True
-    torch.backends.cudnn.benchmark = False
+def test(model_path=None):
+    # If no model specified, use the latest one
+    if model_path is None:
+        model_path = get_latest_model()
+    # If model_path is just a filename, prepend the models directory
+    elif not os.path.dirname(model_path):
+        model_path = os.path.join('models', model_path)
     
-    # Setup device
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    print(f"Using device: {device}")
+    print(f"Using model: {model_path}")
+    
+    # Load test data
+    transform = transforms.Compose([
+        transforms.ToTensor(),
+        transforms.Normalize((0.5), (0.5))  # Matching training normalization
+    ])
+    
+    test_loader = torch.utils.data.DataLoader(
+        datasets.MNIST('data', train=False, transform=transform),
+        batch_size=1000, shuffle=True)
+    
+    # Check if model file exists
+    if not os.path.exists(model_path):
+        print(f"Error: Model file not found at {model_path}")
+        sys.exit(1)
     
     # Load model
     model = Net().to(device)
-    
-    # Get current working directory and find model files
-    current_dir = os.getcwd()
-    model_dir = os.path.join(current_dir, 'models')
-    model_files = glob.glob(os.path.join(model_dir, 'mnist_model_*.pth'))
-    
-    if not model_files:
-        raise FileNotFoundError(f"No model files found in {model_dir}")
-    
-    latest_model = max(model_files)
-    print(f"Found model files: {model_files}")
-    print(f"Loading latest model: {latest_model}")
-    
     try:
-        model.load_state_dict(torch.load(latest_model, weights_only=True, map_location=device))
-        print(f"Successfully loaded model from: {latest_model}")
+        # Handle different model loading scenarios
+        state_dict = torch.load(model_path, map_location=device)
+        model.load_state_dict(state_dict)
     except Exception as e:
-        print(f"Error loading model: {e}")
-        print(f"Current working directory: {current_dir}")
-        print(f"Model directory contents: {os.listdir(model_dir)}")
-        raise
+        print(f"Error loading model: {str(e)}")
+        sys.exit(1)
     
-    # Check parameters
-    total_params = sum(p.numel() for p in model.parameters())
-    print(f"Total parameters: {total_params}")
-    assert total_params < 25000, f"Model has too many parameters: {total_params}"
-    
-    # Setup data
-    transform = transforms.Compose([
-        transforms.Grayscale(num_output_channels=3),
-        transforms.ToTensor(),
-        transforms.Normalize((0.1307,), (0.3081,))
-    ])
-    
-    # Load test dataset with download check
-    download_required = not check_data_exists()
-    test_dataset = datasets.MNIST('data', train=False, download=download_required, transform=transform)
-    test_loader = torch.utils.data.DataLoader(test_dataset, batch_size=64)
-    
-    # Test loop
     model.eval()
+    
+    # Test model parameters
+    param_count = model.count_parameters()
+    print(f"Parameter count: {param_count}")
+    assert param_count < 25000, "Model has too many parameters"
+    
+    # Test input shape
+    dummy_input = torch.randn(1, 1, 28, 28).to(device)
+    try:
+        output = model(dummy_input)
+        assert output.shape[1] == 10, "Model output should have 10 classes"
+    except Exception as e:
+        print(f"Input shape test failed: {str(e)}")
+        sys.exit(1)
+    
+    # Test accuracy
     correct = 0
     total = 0
-    class_correct = {i: 0 for i in range(10)}
-    class_total = {i: 0 for i in range(10)}
     
     with torch.no_grad():
-        pbar = tqdm(test_loader, desc="Testing")
-        for data, target in pbar:
+        for data, target in test_loader:
             data, target = data.to(device), target.to(device)
             output = model(data)
             pred = output.argmax(dim=1)
-            
-            # Overall accuracy
             correct += pred.eq(target).sum().item()
             total += target.size(0)
-            
-            # Class-wise accuracy
-            for t, p in zip(target, pred):
-                class_correct[t.item()] += (p == t).item()
-                class_total[t.item()] += 1
-            
-            # Update progress bar
-            accuracy = 100. * correct / total
-            pbar.set_postfix(accuracy=f"{accuracy:.2f}%")
     
-    # Print final results
-    final_accuracy = 100. * correct / total
-    print(f"\nOverall Test accuracy: {final_accuracy:.2f}%")
+    accuracy = 100. * correct / total
+    print(f'Test Accuracy: {accuracy:.2f}%')
+    assert accuracy > 95, "Model accuracy is below 95%"
     
-    # Print class-wise accuracy
-    print("\nClass-wise accuracy:")
-    for i in range(10):
-        class_acc = 100. * class_correct[i] / class_total[i]
-        print(f"Class {i}: {class_acc:.2f}% ({class_correct[i]}/{class_total[i]})")
-    
-    assert final_accuracy > 95, f"Model accuracy is {final_accuracy:.2f}%, should be > 95%"
+    return True
 
-if __name__ == "__main__":
-    test_model()
-
+if __name__ == '__main__':
+    if len(sys.argv) > 2:
+        print("Usage: python test_model.py [model_filename]")
+        print("Example: python test_model.py model_20230615_143022.pth")
+        print("If no model specified, the latest model will be used")
+        sys.exit(1)
+    
+    model_file = sys.argv[1] if len(sys.argv) == 2 else None
+    test(model_file) 

@@ -1,122 +1,93 @@
-# Importing MNIST dataset from torchvision
-from torchvision import datasets
-import torchvision.transforms as transforms
-
-# Importing torch.nn and torch.optim
 import torch
 import torch.nn as nn
 import torch.optim as optim
-
-from tqdm.auto import tqdm
+from torchvision import datasets, transforms
+from model import Net
 from datetime import datetime
 import os
-from model import Net
+import tqdm
+import random
+import numpy as np
 
-def check_data_exists():
-    data_path = 'data/MNIST/raw'
-    required_files = [
-        'train-images-idx3-ubyte',
-        'train-labels-idx1-ubyte',
-        't10k-images-idx3-ubyte',
-        't10k-labels-idx1-ubyte'
-    ]
-    
-    if not os.path.exists(data_path):
-        print("Data directory does not exist. Will download data.")
-        return False
-    
-    for file in required_files:
-        if not os.path.exists(os.path.join(data_path, file)):
-            print(f"Missing {file}. Will download data.")
-            return False
-    
-    print("MNIST data already exists. Skipping download.")
-    return True
+def set_seed(seed=42):
+    """Set all seeds for reproducibility"""
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed(seed)
+    torch.cuda.manual_seed_all(seed)  # if using multi-GPU
+    np.random.seed(seed)
+    random.seed(seed)
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
 
 def train():
-    # Set device and random seed
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    print(f"Using device: {device}")
+    # Set seeds for reproducibility
+    set_seed(42)
     
-    # Setup transforms with augmentation
-    train_transform = transforms.Compose([
-        transforms.Grayscale(num_output_channels=3),
+    # Set device
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    
+    # Create models directory if it doesn't exist
+    models_dir = 'models'
+    if not os.path.exists(models_dir):
+        os.makedirs(models_dir)
+    
+    # Data loading
+    transform = transforms.Compose([
         transforms.ToTensor(),
-        transforms.Normalize((0.1307,), (0.3081,))  # MNIST specific normalization
+        transforms.Normalize((0.5), (0.5)),
     ])
     
-    # Load dataset with augmentation
-    download_required = not check_data_exists()
-    train_dataset = datasets.MNIST('data', train=True, download=download_required, transform=train_transform)
-    train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=64, shuffle=True)
+    train_loader = torch.utils.data.DataLoader(
+        datasets.MNIST('data', train=True, download=True, transform=transform),
+        batch_size=64, shuffle=True,
+        worker_init_fn=lambda worker_id: np.random.seed(42 + worker_id))  # Set seed for dataloader workers
     
-    # Initialize model, criterion, optimizer
+    # Model, optimizer and criterion
     model = Net().to(device)
-    criterion = nn.CrossEntropyLoss()  # Changed from NLLLoss
-    optimizer = optim.Adam(model.parameters(), lr=0.001)
+    optimizer = optim.SGD(model.parameters(), lr=0.03, momentum=0.8)
+    criterion = nn.CrossEntropyLoss()
     
-    # Training loop
-    model.train()
-    running_loss = 0.0
-    correct = 0
-    total = 0
-    
-    num_epochs = 1
-    
-    for epoch in range(num_epochs):
-        running_loss = 0.0
+    def calculate_accuracy(loader, model):
+        model.eval()
         correct = 0
         total = 0
-        
-        pbar = tqdm(train_loader, desc=f"Epoch {epoch+1}/{num_epochs}")
-        for batch_idx, (data, target) in enumerate(pbar):
+
+        with torch.no_grad():
+            for data, target in loader:
+                data, target = data.to(device), target.to(device)
+                output = model(data)
+                _, predicted = torch.max(output, 1)
+                total += target.size(0)
+                correct += (predicted == target).sum().item()
+        return 100 * correct / total
+    
+    epochs = 1
+    for epoch in range(epochs):
+        model.train()
+        correct = 0
+        total = 0
+        pbar = tqdm.tqdm(train_loader)
+
+        for data, target in pbar:
             data, target = data.to(device), target.to(device)
-            
-            # Forward pass
             optimizer.zero_grad()
             output = model(data)
             loss = criterion(output, target)
-            
-            # Backward pass
             loss.backward()
             optimizer.step()
-            
-            # Calculate accuracy
-            pred = output.argmax(dim=1)
-            correct += pred.eq(target).sum().item()
+
+            _, predicted = torch.max(output, 1)
             total += target.size(0)
-            running_loss += loss.item()
-            
-            # Update progress bar with both loss and accuracy
-            if batch_idx % 10 == 0:  # Update every 10 batches
-                avg_loss = running_loss / (batch_idx + 1)
-                accuracy = 100. * correct / total
-                pbar.set_postfix({
-                    'loss': f'{avg_loss:.4f}',
-                    'accuracy': f'{accuracy:.2f}%'
-                })
-        
-        # Epoch-end statistics
-        epoch_loss = running_loss / len(train_loader)
-        epoch_accuracy = 100. * correct / total
-        print(f'\nEpoch {epoch+1}/{num_epochs}:')
-        print(f'Average Loss: {epoch_loss:.4f}')
-        print(f'Accuracy: {epoch_accuracy:.2f}%')
+            correct += (predicted == target).sum().item()
+            pbar.set_description(
+                desc=f'Loss={loss.item():.4f} | Train Accuracy={100 * correct / total:.2f}% | Epoch={epoch + 1}'
+            )
     
-    # Save model with timestamp and git info
+    # Save model with timestamp in models directory
     timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-    try:
-        import git
-        repo = git.Repo(search_parent_directories=True)
-        commit_hash = repo.head.object.hexsha[:7]
-        model_name = f'mnist_model_{timestamp}_commit_{commit_hash}.pth'
-    except:
-        model_name = f'mnist_model_{timestamp}.pth'
-    
-    if not os.path.exists('models'):
-        os.makedirs('models')
-    torch.save(model.state_dict(), f'models/{model_name}')
-    print(f"\nModel saved as: {model_name}")
-    
+    save_path = os.path.join(models_dir, f'model_{timestamp}.pth')
+    torch.save(model.state_dict(), save_path)
+    return save_path
+
 if __name__ == '__main__':
-    train() 
+    train()

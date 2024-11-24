@@ -9,7 +9,7 @@ class Net(nn.Module):
 
         # First block of convolutional layers
         self.conv1 = nn.Sequential(
-            nn.Conv2d(in_channels=3, out_channels=8, kernel_size=(3, 3), padding=1, bias=False),
+            nn.Conv2d(in_channels=1, out_channels=8, kernel_size=(3, 3), padding=1, bias=False),
             nn.ReLU(),
             nn.BatchNorm2d(8),
             nn.Dropout(0.05),
@@ -77,3 +77,16 @@ class Net(nn.Module):
         x = x.view(x.size(0), -1)  # Flatten to shape (batch_size, 10)
 
         return F.log_softmax(x, dim=-1)
+
+    def count_parameters(self):
+        print(f"{'Layer Name':<25} {'Output Shape':<25} {'Param Count':<15}")
+        print("=" * 65)
+        total_params = 0
+        for name, param in self.named_parameters():
+            if param.requires_grad:
+                param_count = param.numel()
+                total_params += param_count
+                print(f"{name:<25} {str(list(param.shape)):<25} {param_count:<15}")
+        print("=" * 65)
+        print(f"Total trainable parameters: {total_params}\n")
+        return sum(p.numel() for p in self.parameters() if p.requires_grad) 
