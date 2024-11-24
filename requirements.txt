@@ -1,9 +1,9 @@
-torch
-torchvision
-numpy
-tqdm
-pytest
-gitpython
-pillow
-matplotlib
+torch==2.1.0
+torchvision==0.16.0
+numpy==1.24.3
+tqdm==4.66.1
+pytest==7.4.3
+gitpython==3.1.40
+pillow==10.1.0
+matplotlib==3.7.3
 
