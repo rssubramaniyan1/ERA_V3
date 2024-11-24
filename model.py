@@ -62,6 +62,11 @@ class Net(nn.Module):
         x = self.conv2(x)
         x = self.pool2(x)
         x = self.conv3(x)
+
+        # Apply the fully connected layer
         x = self.fc_conv(x)
-        x = x.view(x.size(0), -1)
-        return F.log_softmax(x, dim=-1) 
+        x = F.adaptive_avg_pool2d(x, 1)
+        # Flatten the output of the convolution layer
+        x = x.view(x.size(0), -1)  # Flatten to shape (batch_size, 10)
+
+        return F.log_softmax(x, dim=-1)
