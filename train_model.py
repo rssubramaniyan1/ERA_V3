@@ -10,7 +10,7 @@ import torch.optim as optim
 from tqdm.auto import tqdm
 from datetime import datetime
 import os
-from model import Net  # Import Net from model.py
+from model import Net
 
 def train():
     # Set device and random seed
@@ -20,21 +20,18 @@ def train():
     
     # Setup transforms with augmentation
     train_transform = transforms.Compose([
-        transforms.RandomRotation(15),
-        transforms.RandomAffine(degrees=0, translate=(0.1, 0.1)),
-        transforms.ColorJitter(brightness=0.2, contrast=0.2),
         transforms.Grayscale(num_output_channels=3),
         transforms.ToTensor(),
-        transforms.Normalize((0.5,), (0.5,))
+        transforms.Normalize((0.1307,), (0.3081,))  # MNIST specific normalization
     ])
     
     # Load dataset with augmentation
     train_dataset = datasets.MNIST('data', train=True, download=True, transform=train_transform)
-    train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=128, shuffle=True)
+    train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=64, shuffle=True)
     
     # Initialize model, criterion, optimizer
     model = Net().to(device)
-    criterion = nn.NLLLoss()
+    criterion = nn.CrossEntropyLoss()  # Changed from NLLLoss
     optimizer = optim.Adam(model.parameters(), lr=0.001)
     
     # Training loop
@@ -43,47 +40,47 @@ def train():
     correct = 0
     total = 0
     
-    pbar = tqdm(train_loader, desc="Training")
-    for batch_idx, (data, target) in enumerate(pbar):
-        data, target = data.to(device), target.to(device)
-        
-        # Forward pass
-        optimizer.zero_grad()
-        output = model(data)
-        loss = criterion(output, target)
-        
-        # Backward pass
-        loss.backward()
-        optimizer.step()
-        
-        # Calculate accuracy
-        pred = output.argmax(dim=1)
-        correct += pred.eq(target).sum().item()
-        total += target.size(0)
-        running_loss += loss.item()
-        
-        # Update progress bar with both loss and accuracy
-        if batch_idx % 10 == 0:  # Update every 10 batches
-            avg_loss = running_loss / (batch_idx + 1)
-            accuracy = 100. * correct / total
-            pbar.set_postfix({
-                'loss': f'{avg_loss:.4f}',
-                'accuracy': f'{accuracy:.2f}%'
-            })
-            
-        # Print detailed stats every 100 batches
-        if batch_idx % 100 == 0:
-            print(f'\nBatch {batch_idx}/{len(train_loader)}:')
-            print(f'Loss: {avg_loss:.4f}')
-            print(f'Accuracy: {accuracy:.2f}%')
-            print(f'Correct/Total: {correct}/{total}')
+    num_epochs = 5  # Increased number of epochs
     
-    # Final training stats
-    final_accuracy = 100. * correct / total
-    final_loss = running_loss / len(train_loader)
-    print(f'\nTraining completed:')
-    print(f'Final Loss: {final_loss:.4f}')
-    print(f'Final Accuracy: {final_accuracy:.2f}%')
+    for epoch in range(num_epochs):
+        running_loss = 0.0
+        correct = 0
+        total = 0
+        
+        pbar = tqdm(train_loader, desc=f"Epoch {epoch+1}/{num_epochs}")
+        for batch_idx, (data, target) in enumerate(pbar):
+            data, target = data.to(device), target.to(device)
+            
+            # Forward pass
+            optimizer.zero_grad()
+            output = model(data)
+            loss = criterion(output, target)
+            
+            # Backward pass
+            loss.backward()
+            optimizer.step()
+            
+            # Calculate accuracy
+            pred = output.argmax(dim=1)
+            correct += pred.eq(target).sum().item()
+            total += target.size(0)
+            running_loss += loss.item()
+            
+            # Update progress bar with both loss and accuracy
+            if batch_idx % 10 == 0:  # Update every 10 batches
+                avg_loss = running_loss / (batch_idx + 1)
+                accuracy = 100. * correct / total
+                pbar.set_postfix({
+                    'loss': f'{avg_loss:.4f}',
+                    'accuracy': f'{accuracy:.2f}%'
+                })
+        
+        # Epoch-end statistics
+        epoch_loss = running_loss / len(train_loader)
+        epoch_accuracy = 100. * correct / total
+        print(f'\nEpoch {epoch+1}/{num_epochs}:')
+        print(f'Average Loss: {epoch_loss:.4f}')
+        print(f'Accuracy: {epoch_accuracy:.2f}%')
     
     # Save model with timestamp and git info
     timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
