@@ -18,8 +18,7 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        cd ERA_V3/Assignment5
-        pip install -r requirements.txt
+        pip install -r ERA_V3/Assignment5/requirements.txt
     
     - name: Create models directory
       run: |
