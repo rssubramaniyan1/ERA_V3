@@ -106,16 +106,51 @@ def train():
     
     # Training loop
     model.train()
-    for batch_idx, (data, target) in enumerate(tqdm(train_loader, desc="Training")):
+    running_loss = 0.0
+    correct = 0
+    total = 0
+    
+    pbar = tqdm(train_loader, desc="Training")
+    for batch_idx, (data, target) in enumerate(pbar):
         data, target = data.to(device), target.to(device)
+        
+        # Forward pass
         optimizer.zero_grad()
         output = model(data)
         loss = criterion(output, target)
+        
+        # Backward pass
         loss.backward()
         optimizer.step()
         
+        # Calculate accuracy
+        pred = output.argmax(dim=1)
+        correct += pred.eq(target).sum().item()
+        total += target.size(0)
+        running_loss += loss.item()
+        
+        # Update progress bar with both loss and accuracy
+        if batch_idx % 10 == 0:  # Update every 10 batches
+            avg_loss = running_loss / (batch_idx + 1)
+            accuracy = 100. * correct / total
+            pbar.set_postfix({
+                'loss': f'{avg_loss:.4f}',
+                'accuracy': f'{accuracy:.2f}%'
+            })
+            
+        # Print detailed stats every 100 batches
         if batch_idx % 100 == 0:
-            print(f'Batch {batch_idx}/{len(train_loader)}, Loss: {loss.item():.4f}')
+            print(f'\nBatch {batch_idx}/{len(train_loader)}:')
+            print(f'Loss: {avg_loss:.4f}')
+            print(f'Accuracy: {accuracy:.2f}%')
+            print(f'Correct/Total: {correct}/{total}')
+    
+    # Final training stats
+    final_accuracy = 100. * correct / total
+    final_loss = running_loss / len(train_loader)
+    print(f'\nTraining completed:')
+    print(f'Final Loss: {final_loss:.4f}')
+    print(f'Final Accuracy: {final_accuracy:.2f}%')
     
     # Save model with timestamp and git info
     timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
