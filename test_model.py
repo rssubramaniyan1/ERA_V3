@@ -13,27 +13,31 @@ def get_latest_model():
     return max(models, key=os.path.getctime)
 
 def test(model_path=None):
+    # Force CPU
+    device = torch.device('cpu')
+    
     # If no model specified, use the latest one
     if model_path is None:
         model_path = get_latest_model()
-    # If model_path is just a filename, prepend the models directory
     elif not os.path.dirname(model_path):
         model_path = os.path.join('models', model_path)
     
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     print(f"Using model: {model_path}")
+    
+    # Check if data exists
+    data_dir = 'data'
+    download_required = not os.path.exists(os.path.join(data_dir, 'MNIST'))
     
     # Load test data
     transform = transforms.Compose([
         transforms.ToTensor(),
-        transforms.Normalize((0.5), (0.5))  # Matching training normalization
+        transforms.Normalize((0.5), (0.5))
     ])
     
     test_loader = torch.utils.data.DataLoader(
-        datasets.MNIST('data', train=False, transform=transform),
+        datasets.MNIST(data_dir, train=False, download=download_required, transform=transform),
         batch_size=1000, shuffle=True)
     
-    # Check if model file exists
     if not os.path.exists(model_path):
         print(f"Error: Model file not found at {model_path}")
         sys.exit(1)
@@ -41,7 +45,6 @@ def test(model_path=None):
     # Load model
     model = Net().to(device)
     try:
-        # Handle different model loading scenarios
         state_dict = torch.load(model_path, map_location=device)
         model.load_state_dict(state_dict)
     except Exception as e:
