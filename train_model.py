@@ -12,9 +12,29 @@ from datetime import datetime
 import os
 from model import Net
 
+def check_data_exists():
+    data_path = 'data/MNIST/raw'
+    required_files = [
+        'train-images-idx3-ubyte',
+        'train-labels-idx1-ubyte',
+        't10k-images-idx3-ubyte',
+        't10k-labels-idx1-ubyte'
+    ]
+    
+    if not os.path.exists(data_path):
+        print("Data directory does not exist. Will download data.")
+        return False
+    
+    for file in required_files:
+        if not os.path.exists(os.path.join(data_path, file)):
+            print(f"Missing {file}. Will download data.")
+            return False
+    
+    print("MNIST data already exists. Skipping download.")
+    return True
+
 def train():
     # Set device and random seed
-    torch.manual_seed(42)
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     print(f"Using device: {device}")
     
@@ -26,7 +46,8 @@ def train():
     ])
     
     # Load dataset with augmentation
-    train_dataset = datasets.MNIST('data', train=True, download=True, transform=train_transform)
+    download_required = not check_data_exists()
+    train_dataset = datasets.MNIST('data', train=True, download=download_required, transform=train_transform)
     train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=64, shuffle=True)
     
     # Initialize model, criterion, optimizer
@@ -40,7 +61,7 @@ def train():
     correct = 0
     total = 0
     
-    num_epochs = 5  # Increased number of epochs
+    num_epochs = 1
     
     for epoch in range(num_epochs):
         running_loss = 0.0

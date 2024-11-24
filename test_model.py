@@ -6,6 +6,27 @@ import glob
 import os
 from model import Net
 
+def check_data_exists():
+    data_path = 'data/MNIST/raw'
+    required_files = [
+        'train-images-idx3-ubyte',
+        'train-labels-idx1-ubyte',
+        't10k-images-idx3-ubyte',
+        't10k-labels-idx1-ubyte'
+    ]
+    
+    if not os.path.exists(data_path):
+        print("Data directory does not exist. Will download data.")
+        return False
+    
+    for file in required_files:
+        if not os.path.exists(os.path.join(data_path, file)):
+            print(f"Missing {file}. Will download data.")
+            return False
+    
+    print("MNIST data already exists. Skipping download.")
+    return True
+
 def test_model():
     # Set reproducibility
     torch.manual_seed(42)
@@ -52,7 +73,9 @@ def test_model():
         transforms.Normalize((0.1307,), (0.3081,))
     ])
     
-    test_dataset = datasets.MNIST('data', train=False, download=True, transform=transform)
+    # Load test dataset with download check
+    download_required = not check_data_exists()
+    test_dataset = datasets.MNIST('data', train=False, download=download_required, transform=transform)
     test_loader = torch.utils.data.DataLoader(test_dataset, batch_size=64)
     
     # Test loop
