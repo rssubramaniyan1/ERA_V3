@@ -98,13 +98,15 @@ def train():
         total = 0
         running_loss = 0.0
         
-        # Use tqdm with adjusted settings for cleaner output
+        # Modified progress bar settings
         pbar = tqdm.tqdm(train_loader, 
-                         desc=f'Train Epoch {epoch + 1}/{train_epochs}',
-                         disable=False,  # Enable the progress bar
-                         leave=True,     # Leave the progress bar after completion
-                         ncols=80,       # Fixed width for better formatting
-                         ascii=True)     # Use ASCII characters for compatibility
+                        desc=f'Epoch {epoch + 1}/{train_epochs}',
+                        disable=False,
+                        leave=True,
+                        ncols=100,
+                        ascii=True,
+                        mininterval=1.0,  # Update interval in seconds
+                        bar_format='{l_bar}{bar}| {n_fmt}/{total_fmt} [{elapsed}<{remaining}]')
 
         for data, target in pbar:
             data, target = data.to(device), target.to(device)
@@ -120,22 +122,22 @@ def train():
             correct += (predicted == target).sum().item()
             running_loss += loss.item()
 
-            # Update progress bar description
-            pbar.set_postfix({
-                'Loss': f'{running_loss / (total / target.size(0)):.4f}',
-                'Acc': f'{100 * correct / total:.2f}%'
-            })
-        
-        # Print epoch summary
+            # Only update description occasionally to reduce output
+            if total % (len(train_loader.dataset) // 10) == 0:
+                print(f'\rEpoch {epoch + 1}/{train_epochs} | '
+                      f'Progress: {total}/{len(train_loader.dataset)} | '
+                      f'Loss: {running_loss / (total / target.size(0)):.4f} | '
+                      f'Acc: {100 * correct / total:.2f}%', end='')
+
+        # Print epoch summary on new line
         train_acc = 100. * correct / total
-        print(f'Epoch {epoch + 1}/{train_epochs} Summary | '
+        print(f'\nEpoch {epoch + 1}/{train_epochs} Summary | '
               f'Loss: {running_loss / len(train_loader):.4f} | '
               f'Train Acc: {train_acc:.2f}% | '
               f'LR: {scheduler.get_last_lr()[0]:.6f}')
 
         if train_acc > best_train_acc:
             best_train_acc = train_acc
-            # Save best training model
             save_path = os.path.join(models_dir, f'best_train_model.pth')
             torch.save({
                 'model_state_dict': model.state_dict(),
