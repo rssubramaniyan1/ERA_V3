@@ -96,7 +96,15 @@ def train():
         model.train()
         correct = 0
         total = 0
-        pbar = tqdm.tqdm(train_loader, desc=f'Train Epoch {epoch + 1}/{train_epochs}')
+        running_loss = 0.0
+        
+        # Use tqdm with adjusted settings for cleaner output
+        pbar = tqdm.tqdm(train_loader, 
+                         desc=f'Train Epoch {epoch + 1}/{train_epochs}',
+                         disable=False,  # Enable the progress bar
+                         leave=True,     # Leave the progress bar after completion
+                         ncols=80,       # Fixed width for better formatting
+                         ascii=True)     # Use ASCII characters for compatibility
 
         for data, target in pbar:
             data, target = data.to(device), target.to(device)
@@ -110,13 +118,21 @@ def train():
             _, predicted = torch.max(output, 1)
             total += target.size(0)
             correct += (predicted == target).sum().item()
-        # Calculate average loss and accuracy for the epoch
-        train_loss /= len(train_loader)
+            running_loss += loss.item()
+
+            # Update progress bar description
+            pbar.set_postfix({
+                'Loss': f'{running_loss / (total / target.size(0)):.4f}',
+                'Acc': f'{100 * correct / total:.2f}%'
+            })
+        
+        # Print epoch summary
         train_acc = 100. * correct / total
-        
-        # Print only once per epoch
-        print(f'Epoch {epoch + 1:2d}/{train_epochs} | Loss: {train_loss:.4f} | Train Acc: {train_acc:.2f}% | LR: {scheduler.get_last_lr()[0]:.6f}')
-        
+        print(f'Epoch {epoch + 1}/{train_epochs} Summary | '
+              f'Loss: {running_loss / len(train_loader):.4f} | '
+              f'Train Acc: {train_acc:.2f}% | '
+              f'LR: {scheduler.get_last_lr()[0]:.6f}')
+
         if train_acc > best_train_acc:
             best_train_acc = train_acc
             # Save best training model
