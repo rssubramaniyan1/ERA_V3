@@ -11,6 +11,7 @@ import os
 import tqdm
 import random
 from augmentation import DataAugmentation
+import time
 
 def set_seed(seed=42):
     """Set all seeds for reproducibility"""
@@ -25,6 +26,9 @@ def get_optimizer(model, learning_rate=0.01, weight_decay=0.0001):
     scheduler = None  # Will define this in the training loop with OneCycleLR
     return criterion, optimizer, scheduler
 
+def is_ci_environment():
+    """Check if we're running in a CI environment"""
+    return os.environ.get('CI') is not None or os.environ.get('GITHUB_ACTIONS') is not None
 
 def train():
     # Set seeds for reproducibility
@@ -92,23 +96,23 @@ def train():
     # Training Phase
     print("Starting Training Phase...")
     best_train_acc = 0
+    is_ci = is_ci_environment()
+    
     for epoch in range(train_epochs):
         model.train()
         correct = 0
         total = 0
         running_loss = 0.0
         
-        # Modified progress bar settings
-        pbar = tqdm.tqdm(train_loader, 
-                        desc=f'Epoch {epoch + 1}/{train_epochs}',
-                        disable=False,
-                        leave=True,
-                        ncols=100,
-                        ascii=True,
-                        mininterval=1.0,  # Update interval in seconds
-                        bar_format='{l_bar}{bar}| {n_fmt}/{total_fmt} [{elapsed}<{remaining}]')
+        # Use tqdm only in local environment
+        iterator = train_loader
+        if not is_ci:
+            iterator = tqdm.tqdm(train_loader, 
+                               desc=f'Epoch {epoch + 1}/{train_epochs}',
+                               leave=True,
+                               ncols=100)
 
-        for data, target in pbar:
+        for data, target in iterator:
             data, target = data.to(device), target.to(device)
             optimizer.zero_grad()
             output = model(data)
@@ -122,16 +126,9 @@ def train():
             correct += (predicted == target).sum().item()
             running_loss += loss.item()
 
-            # Only update description occasionally to reduce output
-            if total % (len(train_loader.dataset) // 10) == 0:
-                print(f'\rEpoch {epoch + 1}/{train_epochs} | '
-                      f'Progress: {total}/{len(train_loader.dataset)} | '
-                      f'Loss: {running_loss / (total / target.size(0)):.4f} | '
-                      f'Acc: {100 * correct / total:.2f}%', end='')
-
-        # Print epoch summary on new line
+        # Print epoch summary
         train_acc = 100. * correct / total
-        print(f'\nEpoch {epoch + 1}/{train_epochs} Summary | '
+        print(f'Epoch {epoch + 1}/{train_epochs} Summary | '
               f'Loss: {running_loss / len(train_loader):.4f} | '
               f'Train Acc: {train_acc:.2f}% | '
               f'LR: {scheduler.get_last_lr()[0]:.6f}')
