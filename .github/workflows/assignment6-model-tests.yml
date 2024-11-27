@@ -4,19 +4,15 @@ on:
   push:
     branches: [ main, Assignment6 ]
     paths:
-      - 'Assignment6/**'
+      - '**'  # This will run on all files in current directory
   pull_request:
     branches: [ main ]
     paths:
-      - 'Assignment6/**'
+      - '**'
 
 jobs:
   test:
     runs-on: ubuntu-latest
-
-    defaults:
-      run:
-        working-directory: Assignment6
 
     steps:
     - uses: actions/checkout@v4
@@ -39,9 +35,10 @@ jobs:
         from normalization import NormalizationTypes
 
         def test_model():
+            # Initialize model
             model = Net()
             
-            # Test 1: Parameter Count (<20K)
+            # Test 1: Parameter Count
             total_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
             assert total_params < 20000, f'Model has {total_params} parameters, should be less than 20,000'
             print(f'✓ Parameter count test passed. Total parameters: {total_params}')
