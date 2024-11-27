@@ -4,6 +4,7 @@ from tqdm import tqdm
 import matplotlib.pyplot as plt
 import numpy as np
 import os
+import random
 
 
 class DataAugmentation:
@@ -102,55 +103,46 @@ class DataAugmentation:
         transformed = transform(image=image)
         return transformed['image']
 
-    def visualize_augmentations(self, num_samples=10):
-        """Visualize original and augmented versions of random samples"""
-        # Get transforms
-        train_transform = self.get_transforms(train=True)
+    def visualize_augmentations(self, num_samples=10, save_path=None):
+        """
+        Visualize the augmentations applied to sample images
+        Args:
+            num_samples: Number of samples to visualize
+            save_path: Path to save the visualization. If None, displays the plot
+        """
+        # Get your dataset (assuming MNIST)
+        dataset = datasets.MNIST('data', train=True, download=True)
         
-        # Load dataset
-        dataset = datasets.MNIST('data', train=True, download=True, transform=transforms.ToTensor())
+        # Create a figure
+        fig, axes = plt.subplots(2, num_samples, figsize=(2*num_samples, 4))
         
-        # Create figure
-        fig = plt.figure(figsize=(20, 4))
-        
-        # Get random samples
-        indices = np.random.choice(len(dataset), num_samples, replace=False)
-        
-        for i, idx in enumerate(indices):
-            # Original image
-            img, label = dataset[idx]
-            img = img.squeeze().numpy()  # Convert to numpy for display
+        for i in range(num_samples):
+            # Get a random image
+            idx = random.randint(0, len(dataset)-1)
+            img, _ = dataset[idx]
             
-            # Display original image
-            ax = plt.subplot(2, num_samples, i + 1)
-            ax.imshow(img, cmap='gray')
-            ax.axis('off')
+            # Original image
+            axes[0, i].imshow(img, cmap='gray')
+            axes[0, i].axis('off')
             if i == 0:
-                ax.set_title(f'Original\nDigit: {label}', pad=10)
-            else:
-                ax.set_title(f'Digit: {label}', pad=10)
+                axes[0, i].set_title('Original')
             
             # Augmented image
-            img_pil = transforms.ToPILImage()(torch.tensor(img).unsqueeze(0))  # Create PIL image
-            aug_img = train_transform(img_pil)  # Use the PIL image
-            aug_img = self.denormalize(aug_img)
-            
-            ax = plt.subplot(2, num_samples, i + num_samples + 1)
-            ax.imshow(aug_img.squeeze(), cmap='gray')
-            ax.axis('off')
+            aug_img = self.get_transforms(train=True)(img)
+            axes[1, i].imshow(aug_img.squeeze(), cmap='gray')
+            axes[1, i].axis('off')
             if i == 0:
-                ax.set_title('Augmented', pad=10)
+                axes[1, i].set_title('Augmented')
         
-        plt.suptitle('MNIST Augmentation Samples', fontsize=16, y=0.95)
+        plt.tight_layout()
         
-        # Create output directory if it doesn't exist
-        os.makedirs('outputs', exist_ok=True)
-        
-        # Save the figure
-        plt.savefig('outputs/augmentation_samples.png', bbox_inches='tight', dpi=150)
-        plt.close()
-        
-        print("Augmentation visualization saved as 'outputs/augmentation_samples.png'")
+        if save_path:
+            # Ensure the directory exists
+            os.makedirs(os.path.dirname(save_path), exist_ok=True)
+            plt.savefig(save_path)
+            plt.close()
+        else:
+            plt.show()
 
 if __name__ == '__main__':
     augmenter = DataAugmentation()

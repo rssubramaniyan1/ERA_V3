@@ -25,27 +25,6 @@ def get_optimizer(model, learning_rate=0.01, weight_decay=0.0001):
     scheduler = None  # Will define this in the training loop with OneCycleLR
     return criterion, optimizer, scheduler
 
-def evaluate_model(model, test_loader, criterion, device, epoch):
-    """Evaluate model on test set"""
-    model.eval()
-    test_loss = 0
-    correct = 0
-    total = 0
-    
-    with torch.no_grad():
-        for data, target in test_loader:
-            data, target = data.to(device), target.to(device)
-            output = model(data)
-            test_loss += criterion(output, target).item()
-            pred = output.argmax(dim=1)
-            total += target.size(0)
-            correct += pred.eq(target).sum().item()
-    
-    test_loss /= len(test_loader)
-    accuracy = 100. * correct / total
-    print(f'Test Epoch: {epoch} Average loss: {test_loss:.4f}, '
-          f'Accuracy: {correct}/{total} ({accuracy:.2f}%)')
-    return accuracy
 
 def train():
     # Set seeds for reproducibility
@@ -131,11 +110,13 @@ def train():
             _, predicted = torch.max(output, 1)
             total += target.size(0)
             correct += (predicted == target).sum().item()
-            pbar.set_description(
-                f'Train Epoch {epoch + 1}/{train_epochs} |Loss={loss.item():.4f} | Train Acc={100 * correct / total:.2f}% | LR={scheduler.get_last_lr()[0]:.6f}'
-            )
-        
+        # Calculate average loss and accuracy for the epoch
+        train_loss /= len(train_loader)
         train_acc = 100. * correct / total
+        
+        # Print only once per epoch
+        print(f'Epoch {epoch + 1:2d}/{train_epochs} | Loss: {train_loss:.4f} | Train Acc: {train_acc:.2f}% | LR: {scheduler.get_last_lr()[0]:.6f}')
+        
         if train_acc > best_train_acc:
             best_train_acc = train_acc
             # Save best training model
