@@ -5,6 +5,7 @@ import sys
 import os
 import glob
 import tqdm
+from train_model import is_ci_environment
 
 def get_latest_model():
     """Get the latest model from the models directory"""
@@ -95,6 +96,47 @@ def test(model_path=None):
     assert accuracy > 99.4, "Model accuracy is below 99.4%"
     
     return True
+def test_performance(model, device, test_loader, is_ci=None):
+    """Test the model performance"""
+    if is_ci is None:
+        is_ci = is_ci_environment()
+        
+    model.eval()
+    correct = 0
+    total = 0
+    
+    with torch.no_grad():
+        iterator = test_loader
+        if not is_ci:
+            iterator = tqdm.tqdm(test_loader, 
+                               desc=f'Test Epoch 1/1',
+                               leave=True,
+                               ncols=100)
+        
+        for data, target in iterator:
+            data, target = data.to(device), target.to(device)
+            output = model(data)
+            _, predicted = torch.max(output.data, 1)
+            total += target.size(0)
+            correct += (predicted == target).sum().item()
+            
+            if not is_ci:
+                current_acc = 100. * correct / total
+                iterator.set_description(f'Test Epoch 1/1 | Accuracy={current_acc:.2f}%')
+
+    # Debug prints to see the actual values
+    print(f'Debug - Correct: {correct}, Total: {total}')
+    final_accuracy = 100. * correct / total
+    print(f'Debug - Final Accuracy Calculation: {final_accuracy:.2f}%')
+    
+    # Ensure we're comparing float values
+    required_accuracy = 99.4
+    if final_accuracy < required_accuracy:
+        raise AssertionError(
+            f'Model accuracy {final_accuracy:.2f}% is below required {required_accuracy:.1f}%'
+        )
+    
+    return final_accuracy
 
 if __name__ == '__main__':
     if len(sys.argv) > 2:
