@@ -97,8 +97,8 @@ def test(model_path=None):
     assert accuracy > 99.4, "Model accuracy is below 99.4%"
     
     # Check for either GAP or FC layer
-    has_gap = any(isinstance(module, nn.AdaptiveAvgPool2d) for module in model.modules())
-    has_fc = any(isinstance(module, nn.Linear) for module in model.modules())
+    has_gap = any(isinstance(module, torch.nn.AdaptiveAvgPool2d) for module in model.modules())
+    has_fc = any(isinstance(module, torch.nn.Linear) for module in model.modules())
     
     assert has_gap or has_fc, "Model should use either Global Average Pooling or Fully Connected layer"
     
