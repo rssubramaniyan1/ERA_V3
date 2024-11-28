@@ -97,8 +97,8 @@ def test(model_path=None):
     assert accuracy > 99.4, "Model accuracy is below 99.4%"
     
     # Check for either GAP or FC layer
-    has_gap = any(isinstance(module, nn.AdaptiveAvgPool2d) for module in model.modules())
-    has_fc = any(isinstance(module, nn.Linear) for module in model.modules())
+    has_gap = any(isinstance(module, torch.nn.AdaptiveAvgPool2d) for module in model.modules())
+    has_fc = any(isinstance(module, torch.nn.Linear) for module in model.modules())
     
     assert has_gap or has_fc, "Model should use either Global Average Pooling or Fully Connected layer"
     
@@ -146,11 +146,13 @@ def test_performance(model, device=None, test_loader=None, is_ci=None):
 
     final_accuracy = 100. * correct / total
     print(f'Final Test Accuracy: {final_accuracy:.2f}%')
+    print(f'Raw values - Correct: {correct}, Total: {total}')
     
     required_accuracy = 99.4
     if final_accuracy < required_accuracy:
         raise AssertionError(
-            f'Model accuracy {final_accuracy:.2f}% is below required {required_accuracy:.1f}%'
+            f'Model accuracy {final_accuracy:.2f}% is below required {required_accuracy:.1f}% '
+            f'(Correct: {correct}/{total})'
         )
     
     return final_accuracy
