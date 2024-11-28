@@ -34,8 +34,17 @@ def train():
     # Set seeds for reproducibility
     set_seed(42)
     
-    # Use GPU if available
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    # Device selection based on environment
+    is_ci = is_ci_environment()
+    if is_ci:
+        device = torch.device('cpu')
+        print("CI Environment: Using CPU")
+    else:
+        device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        if torch.cuda.is_available():
+            print(f"Local Environment: Using GPU - {torch.cuda.get_device_name(0)}")
+        else:
+            print("Local Environment: Using CPU")
     
     # Create models directory if it doesn't exist
     models_dir = 'models'

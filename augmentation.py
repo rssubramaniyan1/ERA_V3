@@ -9,36 +9,44 @@ import random
 
 class DataAugmentation:
     def __init__(self):
+        """Initialize augmentation with default values"""
         self.mean = None
         self.std = None
+        self._calculate_stats = True  # Flag to control stats calculation
+
+    def calculate_stats(self, dataset):
+        """Calculate mean and std dev for the dataset"""
+        if not self._calculate_stats:
+            return
+
+        print("Calculating dataset statistics...")
+        loader = torch.utils.data.DataLoader(
+            dataset,
+            batch_size=1000,
+            shuffle=False,
+            num_workers=2
+        )
         
-    def calculate_mean_std(self):
-        """Calculate mean and std of training data for normalization"""
-        if self.mean is not None and self.std is not None:
-            return self.mean, self.std
-            
-        transform = transforms.Compose([transforms.ToTensor()])
-        train_dataset = datasets.MNIST('data', train=True, download=True, transform=transform)
-        train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=1000, shuffle=False)
+        mean = 0.
+        std = 0.
+        for images, _ in loader:
+            batch_samples = images.size(0)
+            images = images.view(batch_samples, images.size(1), -1)
+            mean += images.mean(2).sum(0)
+            std += images.std(2).sum(0)
         
-        channels_sum, channels_squared_sum, num_batches = 0, 0, 0
+        mean /= len(dataset)
+        std /= len(dataset)
         
-        for data, _ in tqdm(train_loader, desc='Calculating mean and std'):
-            channels_sum += torch.mean(data)
-            channels_squared_sum += torch.mean(data**2)
-            num_batches += 1
+        self.mean = mean.tolist()
+        self.std = std.tolist()
+        self._calculate_stats = False  # Disable future calculations
         
-        self.mean = channels_sum/num_batches
-        self.std = (channels_squared_sum/num_batches - self.mean**2)**0.5
-        
-        print(f'Dataset Mean: {self.mean:.4f}, Std: {self.std:.4f}')
+        print(f"Dataset statistics - Mean: {self.mean}, Std: {self.std}")
         return self.mean, self.std
 
     def get_transforms(self, train=True):
         """Get transforms for training or testing"""
-        if self.mean is None or self.std is None:
-            self.mean, self.std = self.calculate_mean_std()
-    
         if train:
             return transforms.Compose([
                 transforms.ToTensor(),
@@ -81,12 +89,12 @@ class DataAugmentation:
                     value=0
                 ),
                 
-                transforms.Normalize((self.mean.item(),), (self.std.item(),))
+               transforms.Normalize(self.mean, self.std) if self.mean is not None else transforms.Lambda(lambda x: x)
             ])
         else:
             return transforms.Compose([
                 transforms.ToTensor(),
-                transforms.Normalize((self.mean.item(),), (self.std.item(),))
+                transforms.Normalize(self.mean, self.std) if self.mean is not None else transforms.Lambda(lambda x: x)
             ])
 
     def denormalize(self, tensor):
@@ -108,7 +116,7 @@ class DataAugmentation:
         Visualize the augmentations applied to sample images
         Args:
             num_samples: Number of samples to visualize
-            save_path: Path to save the visualization. If None, displays the plot
+            save_path: Path to save the visualization. If None, saves to default location
         """
         # Get your dataset (assuming MNIST)
         dataset = datasets.MNIST('data', train=True, download=True)
@@ -136,13 +144,17 @@ class DataAugmentation:
         
         plt.tight_layout()
         
-        if save_path:
-            # Ensure the directory exists
-            os.makedirs(os.path.dirname(save_path), exist_ok=True)
-            plt.savefig(save_path)
-            plt.close()
-        else:
-            plt.show()
+        # Default save path if none provided
+        if save_path is None:
+            # Get the directory where the current file (augmentation.py) is located
+            current_dir = os.path.dirname(os.path.abspath(__file__))
+            # Create path to Outputs folder relative to current file
+            save_path = os.path.join(current_dir, 'Outputs', 'augmentation_samples.png')
+        
+        # Ensure the Outputs directory exists
+        os.makedirs(os.path.dirname(save_path), exist_ok=True)
+        plt.savefig(save_path)
+        plt.close()
 
 if __name__ == '__main__':
     augmenter = DataAugmentation()

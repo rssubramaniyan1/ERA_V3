@@ -96,11 +96,24 @@ def test(model_path=None):
     assert accuracy > 99.4, "Model accuracy is below 99.4%"
     
     return True
-def test_performance(model, device, test_loader, is_ci=None):
+def test_performance(model, device=None, test_loader=None, is_ci=None):
     """Test the model performance"""
     if is_ci is None:
         is_ci = is_ci_environment()
-        
+    
+    # Device selection based on environment
+    if device is None:
+        if is_ci:
+            device = torch.device('cpu')
+            print("CI Environment: Using CPU")
+        else:
+            device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+            if torch.cuda.is_available():
+                print(f"Local Environment: Using GPU - {torch.cuda.get_device_name(0)}")
+            else:
+                print("Local Environment: Using CPU")
+    
+    model = model.to(device)
     model.eval()
     correct = 0
     total = 0
@@ -124,12 +137,9 @@ def test_performance(model, device, test_loader, is_ci=None):
                 current_acc = 100. * correct / total
                 iterator.set_description(f'Test Epoch 1/1 | Accuracy={current_acc:.2f}%')
 
-    # Debug prints to see the actual values
-    print(f'Debug - Correct: {correct}, Total: {total}')
     final_accuracy = 100. * correct / total
-    print(f'Debug - Final Accuracy Calculation: {final_accuracy:.2f}%')
+    print(f'Final Test Accuracy: {final_accuracy:.2f}%')
     
-    # Ensure we're comparing float values
     required_accuracy = 99.4
     if final_accuracy < required_accuracy:
         raise AssertionError(
