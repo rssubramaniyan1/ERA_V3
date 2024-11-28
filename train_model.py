@@ -87,7 +87,7 @@ def train():
     )
     
     # Define number of epochs
-    train_epochs = 20
+    train_epochs = 15
     
     # Create OneCycleLR scheduler
     scheduler = OneCycleLR(

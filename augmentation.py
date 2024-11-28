@@ -12,7 +12,12 @@ class DataAugmentation:
         """Initialize augmentation with default values"""
         self.mean = None
         self.std = None
-        self._calculate_stats = True  # Flag to control stats calculation
+        self._calculate_stats = True
+        
+        # Initialize and calculate stats immediately
+        dataset = datasets.MNIST('data', train=True, download=True, 
+                               transform=transforms.ToTensor())  # Need ToTensor for calculation
+        self.calculate_stats(dataset)
 
     def calculate_stats(self, dataset):
         """Calculate mean and std dev for the dataset"""
@@ -28,15 +33,26 @@ class DataAugmentation:
         )
         
         mean = 0.
-        std = 0.
+        var = 0.    # Use variance instead of std directly
+        n_samples = 0
+        
+        # First pass for mean
         for images, _ in loader:
             batch_samples = images.size(0)
             images = images.view(batch_samples, images.size(1), -1)
             mean += images.mean(2).sum(0)
-            std += images.std(2).sum(0)
+            n_samples += batch_samples
         
-        mean /= len(dataset)
-        std /= len(dataset)
+        mean /= n_samples
+        
+        # Second pass for variance
+        for images, _ in loader:
+            batch_samples = images.size(0)
+            images = images.view(batch_samples, images.size(1), -1)
+            var += ((images - mean.unsqueeze(1))**2).mean(2).sum(0)
+        
+        var /= n_samples
+        std = torch.sqrt(var)
         
         self.mean = mean.tolist()
         self.std = std.tolist()
@@ -53,13 +69,13 @@ class DataAugmentation:
                 # Small rotations only - too much rotation can make digits like 6/9 confusing
                 transforms.RandomRotation((-8, 8), fill=0),
                 
-                # # Slight shifts to help with digit position invariance
-                transforms.RandomAffine(
-                    degrees=0, 
-                    translate=(0.1, 0.1),  # 10% translation
-                    scale=(0.9, 1.1),      # Slight scaling
-                    fill=0
-                ),
+                # # # Slight shifts to help with digit position invariance
+                # transforms.RandomAffine(
+                #     degrees=0, 
+                #     translate=(0.1, 0.1),  # 10% translation
+                #     scale=(0.9, 1.1),      # Slight scaling
+                #     fill=0
+                # ),
                 
                 # Very subtle elastic deformation to simulate natural handwriting variation
                 transforms.ElasticTransform(

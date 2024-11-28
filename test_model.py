@@ -41,6 +41,10 @@ def test(model_path=None):
     mean = checkpoint.get('mean', 0.5)  # fallback to 0.5 if not found
     std = checkpoint.get('std', 0.5)    # fallback to 0.5 if not found
     
+    # After loading checkpoint
+    print(f"Loaded mean: {mean}, std: {std}")
+    print(f"Model state keys: {checkpoint.keys()}")
+    
     # Load test data with same normalization
     test_transform = transforms.Compose([
         transforms.ToTensor(),
@@ -55,6 +59,7 @@ def test(model_path=None):
     
     # Test model parameters
     param_count = model.count_parameters()
+    print(f"Model architecture:\n{model}")
     print(f"Parameter count: {param_count}")
     assert param_count < 20000, "Model has too many parameters"
     
@@ -67,31 +72,27 @@ def test(model_path=None):
         print(f"Input shape test failed: {str(e)}")
         sys.exit(1)
     
-    # Test accuracy over 1 epochs
-    best_accuracy = 0
-    for epoch in range(1):
-        correct = 0
-        total = 0
-        
-        pbar = tqdm.tqdm(test_loader, desc=f'Test Epoch {epoch + 1}/1')
-        with torch.no_grad():
-            for data, target in pbar:
-                data, target = data.to(device), target.to(device)
-                output = model(data)
-                pred = output.argmax(dim=1)
-                correct += pred.eq(target).sum().item()
-                total += target.size(0)
-                
-                # Update progress bar with current accuracy
-                current_acc = 100. * correct / total
-                pbar.set_description(
-                    f'Test Epoch {epoch + 1}/1 | Accuracy={current_acc:.2f}%'
-                )
-        
-        accuracy = 100. * correct / total
-        print(f'Final Test Accuracy: {accuracy:.2f}%')
-        
+    # Test accuracy (single pass over test set)
+    correct = 0
+    total = 0
     
+    pbar = tqdm.tqdm(test_loader, desc='Testing')
+    with torch.no_grad():
+        for data, target in pbar:
+            data, target = data.to(device), target.to(device)
+            output = model(data)
+            pred = output.argmax(dim=1)
+            correct += pred.eq(target).sum().item()
+            total += target.size(0)
+            
+            # Update progress bar with current accuracy
+            current_acc = 100. * correct / total
+            pbar.set_description(
+                f'Testing | Accuracy={current_acc:.2f}%'
+            )
+    
+    accuracy = 100. * correct / total
+    print(f'Final Test Accuracy: {accuracy:.2f}%')
     
     assert accuracy > 99.4, "Model accuracy is below 99.4%"
     
