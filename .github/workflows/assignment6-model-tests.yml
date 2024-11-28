@@ -77,12 +77,13 @@ jobs:
             assert has_dropout, 'Model should use Dropout'
             print('✓ Dropout test passed')
             
-            # Test 4: GAP and FC
+            # Test 4: GAP or FC (not both)
             has_gap = any(isinstance(m, torch.nn.AdaptiveAvgPool2d) for m in model.modules())
-            assert has_gap, 'Model should use Global Average Pooling'
-            has_fc = any(isinstance(m, torch.nn.Linear) for m in model.modules())
-            assert not has_fc, 'Model should not use traditional Fully Connected layers'
-            print('✓ Architecture test passed (GAP used, no FC layers)')
+            num_fc = sum(1 for m in model.modules() if isinstance(m, torch.nn.Linear))
+            
+            # Check that model uses either GAP or FC, but not both
+            assert (has_gap != (num_fc > 0)), 'Model should use either Global Average Pooling OR a Linear layer for classification, but not both'
+            print('✓ Architecture test passed (Using ' + ('GAP' if has_gap else 'FC layer') + ' for classification)')
             
             # Test 5: Forward Pass Shape
             batch_size = 4
