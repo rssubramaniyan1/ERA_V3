@@ -101,6 +101,7 @@ jobs:
       run: |
         python -c "
         import torch
+        from torch import nn
         import torchvision
         from torch.utils.data import DataLoader
         from model import Net
