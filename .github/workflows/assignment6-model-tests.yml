@@ -27,10 +27,11 @@ jobs:
         python -m pip install --upgrade pip
         pip install -r requirements.txt
 
-    - name: Create model directory
+    - name: Create directories
       run: |
         mkdir -p models
         mkdir -p outputs
+        chmod -R 777 outputs  # Ensure write permissions
         echo "Created models and outputs directories"
 
     - name: Generate augmentation samples

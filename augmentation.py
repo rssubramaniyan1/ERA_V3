@@ -146,10 +146,7 @@ class DataAugmentation:
         
         # Default save path if none provided
         if save_path is None:
-            # Get the directory where the current file (augmentation.py) is located
-            current_dir = os.path.dirname(os.path.abspath(__file__))
-            # Create path to Outputs folder relative to current file
-            save_path = os.path.join(current_dir, 'Outputs', 'augmentation_samples.png')
+            save_path = os.path.join('outputs', 'augmentation_samples.png')
         
         # Ensure the Outputs directory exists
         os.makedirs(os.path.dirname(save_path), exist_ok=True)
