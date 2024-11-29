@@ -57,19 +57,23 @@ def test(model_path=None):
     
     model.eval()
     
-    # Test model parameters
+    # Test model architecture
     param_count = model.count_parameters()
-    # print(f"Model architecture:\n{model}")
     print(f"Parameter count: {param_count}")
     assert param_count < 20000, "Model has too many parameters"
     
-    # Check for either GAP or FC layer
     has_gap = any(isinstance(module, torch.nn.AdaptiveAvgPool2d) for module in model.modules())
     has_fc = any(isinstance(module, torch.nn.Linear) for module in model.modules())
     
     assert has_gap or has_fc, "Model should use either Global Average Pooling or Fully Connected layer"
     print('✓ Architecture test passed (Using ' + ('GAP' if has_gap else 'FC layer') + ' for classification)')
-    return True
+    
+    # Run performance tests
+    print("\nRunning Performance Tests:")
+    print("-" * 50)
+    accuracy = test_performance(model, device=device, test_loader=test_loader)
+    
+    return accuracy
 
 def test_performance(model, device=None, test_loader=None, is_ci=None):
     """Test the model performance"""
@@ -133,4 +137,4 @@ if __name__ == '__main__':
         sys.exit(1)
     
     model_file = sys.argv[1] if len(sys.argv) == 2 else None
-    test(model_file) 
+    final_accuracy = test(model_file)  # Now captures the returned accuracy
