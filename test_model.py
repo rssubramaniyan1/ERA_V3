@@ -59,50 +59,18 @@ def test(model_path=None):
     
     # Test model parameters
     param_count = model.count_parameters()
-    print(f"Model architecture:\n{model}")
+    # print(f"Model architecture:\n{model}")
     print(f"Parameter count: {param_count}")
     assert param_count < 20000, "Model has too many parameters"
-    
-    # Test input shape
-    dummy_input = torch.randn(1, 1, 28, 28).to(device)
-    try:
-        output = model(dummy_input)
-        assert output.shape[1] == 10, "Model output should have 10 classes"
-    except Exception as e:
-        print(f"Input shape test failed: {str(e)}")
-        sys.exit(1)
-    
-    # Test accuracy (single pass over test set)
-    correct = 0
-    total = 0
-    
-    pbar = tqdm.tqdm(test_loader, desc='Testing')
-    with torch.no_grad():
-        for data, target in pbar:
-            data, target = data.to(device), target.to(device)
-            output = model(data)
-            pred = output.argmax(dim=1)
-            correct += pred.eq(target).sum().item()
-            total += target.size(0)
-            
-            # Update progress bar with current accuracy
-            current_acc = 100. * correct / total
-            pbar.set_description(
-                f'Testing | Accuracy={current_acc:.2f}%'
-            )
-    
-    accuracy = 100. * correct / total
-    print(f'Final Test Accuracy: {accuracy:.2f}%')
-    
-    assert accuracy > 99.4, "Model accuracy is below 99.4%"
     
     # Check for either GAP or FC layer
     has_gap = any(isinstance(module, torch.nn.AdaptiveAvgPool2d) for module in model.modules())
     has_fc = any(isinstance(module, torch.nn.Linear) for module in model.modules())
     
     assert has_gap or has_fc, "Model should use either Global Average Pooling or Fully Connected layer"
-    
+    print('✓ Architecture test passed (Using ' + ('GAP' if has_gap else 'FC layer') + ' for classification)')
     return True
+
 def test_performance(model, device=None, test_loader=None, is_ci=None):
     """Test the model performance"""
     if is_ci is None:
