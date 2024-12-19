@@ -466,7 +466,8 @@ Current Learning Rate: 0.000002
 
 ![Alt text](https://github.com/rssubramaniyan1/ERA_V3/blob/Assignment7/Assignment7/outputs/Screenshot%20from%202024-12-19%2019-00-22.png)
 
-![Alt text](
+![Alt text](https://github.com/rssubramaniyan1/ERA_V3/blob/Assignment7/Assignment7/outputs/Screenshot%20from%202024-12-19%2019-04-22.png)
+
 ![Alt text](
 
 
