@@ -351,6 +351,35 @@ Estimated Total Size (MB): 0.86
 '''
 
 ```
+==========================================================================================
+Layer      n_in   n_out  s    p    k    j_in   j_out  r_in   r_out  RF     channels  
+------------------------------------------------------------------------------------------
+conv1_0    28     28     1    1    3    1      1      1      3      3      1->8    
+conv1_3    28     28     1    1    3    1      1      3      5      5      8->10   
+conv1_6    28     28     1    1    3    1      1      5      7      7      10->16  
+trans1_0   28     14     2    0    2    1      2      7      8      8      N/A     
+trans1_1   14     14     1    0    1    2      2      8      8      8      16->8   
+conv2_0    14     14     1    1    3    2      2      8      12     12     8->10   
+conv2_3    14     14     1    1    3    2      2      12     16     16     10->10  
+conv2_6    14     14     1    1    3    2      2      16     20     20     10->12  
+trans2_0   14     7      2    0    2    2      4      20     22     22     N/A     
+trans2_1   7      7      1    0    1    4      4      22     22     22     12->8   
+conv3_0    7      7      1    1    3    4      4      22     30     30     8->8    
+conv3_3    7      7      1    1    3    4      4      30     38     38     8->10   
+conv3_6    7      7      1    1    3    4      4      38     46     46     10->12  
+
+Summary:
+Starting Input Size: 7x7
+Final Output Size: 7x7
+Final Receptive Field: 46
+Final Jump: 4
+
+```
+
+
+
+
+```
 **Training Log of the last 5 epochs of the version 3 model (Local Machine)**
 ```
 EPOCH: 10/15
