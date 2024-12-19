@@ -460,7 +460,7 @@ Current Learning Rate: 0.000002
 ###**Training Log of the last 5 epochs of the version 3 model (EC2 Machine)**
 
 
-![Alt text](Assignment7/outputs/Screenshot from 2024-12-19 18-52-44.png)
+![Alt text](https://github.com/rssubramaniyan1/ERA_V3/blob/Assignment7/Assignment7/outputs/Screenshot%20from%202024-12-19%2018-52-44.png)
 
 ![image](outputs/Screenshot from 2024-12-19 18-57-24.png)
 
