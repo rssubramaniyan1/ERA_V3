@@ -350,6 +350,7 @@ Estimated Total Size (MB): 0.86
 ----------------------------------------------------------------
 '''
 
+
 ```
 ==========================================================================================
 Layer      n_in   n_out  s    p    k    j_in   j_out  r_in   r_out  RF     channels  
@@ -373,7 +374,6 @@ Starting Input Size: 7x7
 Final Output Size: 7x7
 Final Receptive Field: 46
 Final Jump: 4
-
 ```
 
 
