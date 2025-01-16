@@ -1,0 +1,4 @@
+numpy
+scipy
+tqdm
+gradio==4.44.1
